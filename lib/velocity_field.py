@@ -44,7 +44,7 @@ def ArcTan1D(r, parameters_dict):
 
 if __name__ == "__main__":
     r = np.arange(-10,10,0.1)
-    parameters = {"v_asympt":200, "r_turnover":0.2, "PA": 10, "inclination": 80.0}
+    parameters = {"v_asympt":200, "r_turnover":0.2, "PA": 10, "inclination": 89.0}
     vel_2D = VelField2D(ArcTan1D)
     
     (x,y) = np.indices([100,100])
