@@ -19,12 +19,20 @@ class VelField2D(object):
         cos2i = 1.0-sini**2
         x_rot = x*np.cos(PA_rad)-y*np.sin(PA_rad)
         y_rot = x*np.sin(PA_rad)+y*np.cos(PA_rad)
-        r = np.sqrt(x_rot**2+(y_rot**2)/cos2i)
         
-        # Mapping 1D velocity curve onto the 
-        velocity = self.__velcurve1D(r, parameters_dict)*(x_rot/r)*np.sin(inclination)
-        select = r==0
-        velocity[select] = 0.0 
+        # Mapping 1D velocity curve onto the grid
+        if parameters_dict["inclination"] == 90:
+            velocity = self.__velcurve1D(x_rot, parameters_dict)
+            pscale = np.diff(y)[0][0]
+            select = np.abs(y_rot) > (pscale/2)
+            velocity[select] = 0.
+
+        else:
+            r = np.sqrt(x_rot**2+(y_rot**2/cos2i))        
+            velocity = self.__velcurve1D(r, parameters_dict)*(x_rot/r)*sini
+            select = r==0
+            velocity[select] = 0.0 
+        
         return velocity
 
 
@@ -44,7 +52,7 @@ def ArcTan1D(r, parameters_dict):
 
 if __name__ == "__main__":
     r = np.arange(-10,10,0.1)
-    parameters = {"v_asympt":200, "r_turnover":0.2, "PA": 10, "inclination": 89.0}
+    parameters = {"v_asympt":200, "r_turnover":0.2, "PA": 10, "inclination": 0.0}
     vel_2D = VelField2D(ArcTan1D)
     
     (x,y) = np.indices([100,100])
