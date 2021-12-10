@@ -21,12 +21,12 @@ class VelField2D(object):
         cos2i = 1.0-sini**2
         x_rot = (x-x_cent)*np.cos(PA_rad)-(y-y_cent)*np.sin(PA_rad)
         y_rot = (x-x_cent)*np.sin(PA_rad)+(y-y_cent)*np.cos(PA_rad)
-        
+
         # Mapping 1D velocity curve onto the grid
         if parameters_dict["inclination"] == 90:
             velocity = self.__velcurve1D(x_rot, parameters_dict)
             veldisp = self.__veldisp1D(x_rot, parameters_dict)                        
-            pscale = np.diff(y_rot)[0][0]
+            pscale = np.diff(y,0)[0][0]
             select = np.abs(y_rot) > (pscale/2)
             velocity[select] = 0.
             veldisp[select] = 0.            
@@ -72,7 +72,7 @@ def ConstantVdisp(r,parameters_dict):
 
 if __name__ == "__main__":
     r = np.arange(-10,10,0.05)
-    parameters = {"v_asympt":200, "r_turnover":0.2, "PA": 20.0, "inclination": 90.0, 'cent_x_vel':0.0, 'cent_y_vel':0.0,'sigma_0':50.}
+    parameters = {"v_asympt":200, "r_turnover":0.2, "PA": 90.0, "inclination": 90.0, 'cent_x_vel':0.0, 'cent_y_vel':0.0,'sigma_0':50.}
     vel_2D = VelField2D(ArcTan1D,ConstantVdisp)
     
     
