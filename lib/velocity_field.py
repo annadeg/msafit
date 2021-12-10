@@ -12,13 +12,14 @@ class VelField2D(object):
         #Taking necessary parameters from parameter dictonary with 
         PA_rad = (parameters_dict["PA"]+90.0)/180.0*np.pi 
         inclination = parameters_dict["inclination"]/180.0*np.pi
-        
+        x_cent = parameters_dict["cent_x_vel"]
+        y_cent = parameters_dict["cent_y_vel"]
         # Applying projection regarding inclination and projection angle 
         sini = np.sin(inclination)
         cosi = np.cos(inclination)
         cos2i = 1.0-sini**2
-        x_rot = x*np.cos(PA_rad)-y*np.sin(PA_rad)
-        y_rot = x*np.sin(PA_rad)+y*np.cos(PA_rad)
+        x_rot = (x-x_cent)*np.cos(PA_rad)-(y-y_cent)*np.sin(PA_rad)
+        y_rot = (x-x_cent)*np.sin(PA_rad)+(y-y_cent)*np.cos(PA_rad)
         
         # Mapping 1D velocity curve onto the grid
         if parameters_dict["inclination"] == 90:
@@ -52,7 +53,7 @@ def ArcTan1D(r, parameters_dict):
 
 if __name__ == "__main__":
     r = np.arange(-10,10,0.05)
-    parameters = {"v_asympt":200, "r_turnover":0.2, "PA": 20.0, "inclination": 80.0}
+    parameters = {"v_asympt":200, "r_turnover":0.2, "PA": 20.0, "inclination": 80.0, 'cent_x_vel':0.0, 'cent_y_vel':0.0,}
     vel_2D = VelField2D(ArcTan1D)
     
     
