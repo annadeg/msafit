@@ -10,7 +10,7 @@ class VelField2D(object):
     def model(self, x, y, parameters_dict):
         
         #Taking necessary parameters from parameter dictonary with 
-        PA_rad = parameters_dict["PA"]/180.0*np.pi 
+        PA_rad = (parameters_dict["PA"]+90.0)/180.0*np.pi 
         inclination = parameters_dict["inclination"]/180.0*np.pi
         
         # Applying projection regarding inclination and projection angle 
@@ -51,14 +51,23 @@ def ArcTan1D(r, parameters_dict):
 
 
 if __name__ == "__main__":
-    r = np.arange(-10,10,0.1)
-    parameters = {"v_asympt":200, "r_turnover":0.2, "PA": 10, "inclination": 0.0}
+    r = np.arange(-10,10,0.05)
+    parameters = {"v_asympt":200, "r_turnover":0.2, "PA": 20.0, "inclination": 80.0}
     vel_2D = VelField2D(ArcTan1D)
     
-    (x,y) = np.indices([100,100])
-    x_cent = 50.1
-    y_cent = 50.1
-    pix_scale = 0.1 
-    vel_field = vel_2D.model((x-x_cent)*pix_scale,(y-y_cent)*pix_scale, parameters)
+    
+    size_x = 3.0
+    size_y = 3.0
+    sampling = 0.1
+    xs= np.linspace(size_x/-2.0,size_x/2.0,int(size_x/sampling))
+    ys= np.linspace(size_y/-2.0,size_y/2.0,int(size_y/sampling))
+    xs,ys = np.meshgrid(xs, ys)
+    
+    #(x,y) = np.indices([30,30])
+    #x_cent = 15.1
+    #y_cent = 15.1
+    #pix_scale = 0.01
+    #print((y-y_cent)*pix_scale,ys*pix_scale)
+    vel_field = vel_2D.model(xs,ys, parameters)
     hdu = fits.PrimaryHDU(vel_field)
     hdu.writeto('test_vel.fits',overwrite=True)

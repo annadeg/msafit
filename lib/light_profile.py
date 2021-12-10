@@ -22,13 +22,13 @@ class LightDistribution2D(object):
     
     
 def Sersic2D(x, y, parameter_dict):
-    model = models.Sersic2D(r_eff=parameter_dict['r_eff_light'], n=parameter_dict['n_index'], x_0=parameter_dict['cent_x_light'],y_0=parameter_dict['cent_y_light'], ellip=1-parameter_dict['axisratio_light'], theta=(parameter_dict['PA_light']-90)/180.0*np.pi)
+    model = models.Sersic2D(r_eff=parameter_dict['r_eff_light'], n=parameter_dict['n_index'], x_0=parameter_dict['cent_x_light'],y_0=parameter_dict['cent_y_light'], ellip=1-parameter_dict['axisratio_light'], theta=(parameter_dict['PA_light'])/180.0*np.pi)
     light_distribution2D = model(x, y)
     return light_distribution2D
         
         
 if __name__ == "__main__":
-    parameter_dict = {'r_eff_light':0.2, 'n_index':1.0, 'cent_x_light':0.0, 'cent_y_light':0.0, 'axisratio_light':np.cos(40.0/180.0*np.pi), 'PA_light':0.0, 'total_flux':10.0}
+    parameter_dict = {'r_eff_light':0.2, 'n_index':1.0, 'cent_x_light':0.0, 'cent_y_light':0.0, 'axisratio_light':np.cos(80.0/180.0*np.pi), 'PA_light':20.0, 'total_flux':10.0}
     
     size_x = 3.0
     size_y = 3.0
