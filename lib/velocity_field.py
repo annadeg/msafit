@@ -71,8 +71,7 @@ def ConstantVdisp(r,parameters_dict):
 
 
 if __name__ == "__main__":
-    r = np.arange(-10,10,0.05)
-    parameters = {"v_asympt":200, "r_turnover":0.2, "PA": 20.0, "inclination": 90.0, 'cent_x_vel':0.0, 'cent_y_vel':0.0,'sigma_0':50.}
+    parameters = {"v_asympt":200, "r_turnover":0.2, "PA": 20.0, "inclination": 20.0, 'cent_x_vel':0.0, 'cent_y_vel':0.0,'sigma_0':50.}
     vel_2D = VelField2D(ArcTan1D,ConstantVdisp)
     
     
@@ -88,6 +87,8 @@ if __name__ == "__main__":
     #y_cent = 15.1
     #pix_scale = 0.01
     #print((y-y_cent)*pix_scale,ys*pix_scale)
-    vel_field = vel_2D.model(xs,ys, parameters)
-    #hdu = fits.PrimaryHDU(vel_field)
-    #hdu.writeto('test_vel.fits',overwrite=True)
+    vel_field, disp_field = vel_2D.model(xs,ys, parameters)
+    hdu = fits.PrimaryHDU(vel_field)
+    hdu.writeto('test_vel.fits',overwrite=True)
+    hdu = fits.PrimaryHDU(disp_field)
+    hdu.writeto('test_disp.fits',overwrite=True)
