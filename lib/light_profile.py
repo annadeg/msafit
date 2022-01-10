@@ -15,7 +15,7 @@ class LightDistribution2D(object):
         light_distribution2D = light_distribution2D/np.sum(light_distribution2D)*total_flux
         
         if out_surfacebrightness:
-            pixel_area = np.fabs(x[1,0]-x[0,0])*np.fabs(y[0,1]-y[0,0])
+            pixel_area = np.fabs(x[0,1]-x[0,0])*np.fabs(y[1,0]-y[0,0])
             light_distribution2D = light_distribution2D/pixel_area
         
         return light_distribution2D
