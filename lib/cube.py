@@ -1,6 +1,6 @@
 import numpy as np
-from velocity_field import ArcTan1D, ConstantVdisp, VelField2D
-from light_profile import Sersic2D, LightDistribution2D
+from .velocity_field import ArcTan1D, ConstantVdisp, VelField2D
+from .light_profile import Sersic2D, LightDistribution2D
 from astropy.io import fits
 
 fact = np.sqrt(2.*np.pi)
@@ -19,7 +19,7 @@ class Cube(object):
         self.__y = y_grid
         self.__wave = wave_grid
         self.__dim = [wave_grid.shape[0], x_grid.shape[0],x_grid.shape[1],]
-        self.__data = None
+        self.data = None
         
         
     def computeLine(self, modelLight2D, modelVel2D, parameters_dict, rest_wave, redshift):
@@ -29,14 +29,14 @@ class Cube(object):
             for i in range(len(modelLight2D)):
                 velocity_map, dispersion_map = modelVel2D[i].model(self.__x, self.__y, parameters_dict[i])
                 light_map = modelLight2D[i].model(self.__x, self.__y, parameters_dict[i])
-                
+
                 wave_cent = ((velocity_map/300000.0)+1)*rest_wave*(redshift+1)
                 wave_width = (dispersion_map/300000.0)*rest_wave 
                 cube_out += Gaussian1D(self.__wave, light_map, wave_cent, wave_width) 
-            self.__data = cube_out
+            self.data = cube_out
             
     def writeFitsData(self, fileout):
-        hdu = fits.PrimaryHDU(self.__data)
+        hdu = fits.PrimaryHDU(self.data)
         hdu.header['CRVAL3'] = self.__wave[0]
         hdu.header['CDELT3'] = self.__wave[1]-self.__wave[0]
         hdu.header['CRPIX3'] = 1

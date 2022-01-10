@@ -15,7 +15,7 @@ class LightDistribution2D(object):
         light_distribution2D = light_distribution2D/np.sum(light_distribution2D)*total_flux
         
         if out_surfacebrightness:
-            pixel_area = np.fabs(x[0,1]-x[0,0])*np.fabs(y[1,0]-y[0,0])
+            pixel_area = np.fabs(y[1,0]-y[0,0])*np.fabs(x[0,1]-x[0,0]) 
             light_distribution2D = light_distribution2D/pixel_area
         
         return light_distribution2D
@@ -35,7 +35,7 @@ if __name__ == "__main__":
     sampling = 0.02
     xs= np.linspace(size_x/-2.0,size_x/2.0,int(size_x/sampling))
     ys= np.linspace(size_y/-2.0,size_y/2.0,int(size_y/sampling))
-    ys,xs = np.meshgrid(ys, xs)
+    xs,ys = np.meshgrid(xs, ys)
 
     Light2D = LightDistribution2D(Sersic2D)
     image = Light2D.model(xs, ys, parameter_dict)

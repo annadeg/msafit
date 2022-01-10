@@ -11,7 +11,7 @@ class VelField2D(object):
     def model(self, x, y, parameters_dict):
         
         #Taking necessary parameters from parameter dictonary with 
-        PA_rad = (parameters_dict["PA"]+90.0)/180.0*np.pi 
+        PA_rad = parameters_dict["PA"]/180.0*np.pi 
         inclination = parameters_dict["inclination"]/180.0*np.pi
         x_cent = parameters_dict["cent_x_vel"]
         y_cent = parameters_dict["cent_y_vel"]
@@ -19,17 +19,17 @@ class VelField2D(object):
         sini = np.sin(inclination)
         cosi = np.cos(inclination)
         cos2i = 1.0-sini**2
-        x_rot = (x-x_cent)*np.cos(PA_rad)-(y-y_cent)*np.sin(PA_rad)
-        y_rot = (x-x_cent)*np.sin(PA_rad)+(y-y_cent)*np.cos(PA_rad)
+        x_rot = (x-x_cent)*np.cos(PA_rad)+(y-y_cent)*np.sin(PA_rad)
+        y_rot = -(x-x_cent)*np.sin(PA_rad)+(y-y_cent)*np.cos(PA_rad)
 
         # Mapping 1D velocity curve onto the grid
         if parameters_dict["inclination"] == 90:
             velocity = self.__velcurve1D(x_rot, parameters_dict)
             veldisp = self.__veldisp1D(x_rot, parameters_dict)                        
-            pscale = np.diff(y,0)[0][0]
+            pscale = np.diff(y,axis=0)[0][0]
             select = np.abs(y_rot) > (pscale/2)
             velocity[select] = 0.
-            veldisp[select] = 0.            
+            veldisp[select] = np.max(veldisp)*1e-5            
 
         else:
             r = np.sqrt(x_rot**2+(y_rot**2/cos2i))        
