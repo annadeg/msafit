@@ -18,7 +18,7 @@ class Cube(object):
         self.__x = x_grid
         self.__y = y_grid
         self.__wave = wave_grid
-        self.__dim = [wave_grid.shape[0], x_grid.shape[0],x_grid.shape[1],]
+        self.__dim = (wave_grid.shape[0], x_grid.shape[0],x_grid.shape[1])
         self.data = None
         
         
