@@ -5,6 +5,8 @@ import numpy as np
 import astropy.constants, astropy.units, astropy.wcs
 from  astropy.io import fits
 
+import sedpy
+
 from ..lib import velocity_field
 from ..lib import light_profile
 
@@ -61,3 +63,12 @@ Cube3D.computeSpectrum(
     [Light2D], [vel2D], [parameters], wave, spec, 0, h3=-.1, h4=-0.1)
 Cube3D.writeIPSObject('test_FSPS.fits')
 Cube3D.writeFitsData('test_FSPS.fits')
+
+# Check output.
+data = fits.open('test_FSPS.fits')
+cube_wcs = wcs.WCS(data[0].header)
+wave = spec_wcs.all_pix2world(0, 0, np.arange(spec_wcs._naxis[2]), 0)[2]
+flux = np.sum(data[0].data, axis=(1,2))
+astro_filter = sedpy.observate.load_filters(('sdss_r0',))[0]
+
+assert, np.isclose(astro_filter.ab_mag(wave, flux), parameters['tot_AB_mag']), 'Mismatch in magnitude'
