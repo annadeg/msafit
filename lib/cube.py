@@ -94,8 +94,8 @@ def main():
     Light2D = LightDistribution2D(Sersic2D)
     Cube3D = Cube(xs, ys, wave)
     Cube3D.computeLine([Light2D], [vel2D], [parameters], 0.65648, 3.0)
-    #Cube3D.writeFitsData("test_cube.fits")
-    Cube3D.writeIPSObject("test_cube.fits")
+    Cube3D.writeFitsData("test_cube.fits")
+    Cube3D.writeIPSObject("test_IPS.fits")
     
     
 if __name__ == "__main__":
