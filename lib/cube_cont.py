@@ -55,6 +55,13 @@ class CubeCont(Cube):
            log_input_spectrum_hires, resample_factor, order=3)
 
         # Hi-resolution output grid.
+        wave_hires = scipy.ndimage.interpolation.zoom(
+           input_wave, resample_factor, order=3)
+        _, log_wave_hires, _ = ppxf.ppxf_util.log_rebin(
+            wave_hires[[0, -1]], wave_hires*0, velscale=None) # Ensure same size!
+        #velscale=velscale/resample_factor)
+        """
+        # Hi-resolution output grid.
         log_wave_hires = scipy.ndimage.interpolation.zoom(
             log_wave, resample_factor, order=3)
         wave_hires = np.linspace(*np.exp(log_wave_hires[[0, -1]]), num=len(log_wave_hires))
@@ -62,6 +69,7 @@ class CubeCont(Cube):
         #    input_wave[0], input_wave[-1], len(input_wave)*resample_factor)
         #_, log_wave_hires, _ = ppxf.ppxf_util.log_rebin(
         #    input_wave[[0, -1]], wave_hires, velscale=velscale/resample_factor)
+        """
 
         # Get FFT of spectrum.
         npad = 2**int(np.ceil(np.log2(len(log_input_spectrum_hires))))

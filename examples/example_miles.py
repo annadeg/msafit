@@ -1,6 +1,7 @@
 # coding: utf-8
 import glob
 import os
+import warnings
 
 import numpy as np
 
@@ -52,7 +53,8 @@ def main():
     with fits.open(filenames[index]) as hdu:
         spec_wcs = astropy.wcs.WCS(hdu[0].header)
         wave = spec_wcs.all_pix2world(np.arange(spec_wcs._naxis[0]), 0)[0]
-        select_range = (wave>=3600.) & (wave<=7500.)
+        #select_range = (wave>=3600.) & (wave<=7500.)
+        select_range = (wave>=-np.inf) & (wave<=np.inf)
         spec = hdu[0].data * astropy.constants.L_sun / astropy.units.AA
         dist = 10*astropy.units.pc
         spec /= (4.*np.pi*dist**2)
@@ -79,7 +81,7 @@ def main():
 
     # Check sol.
     spec = data[0].data[:, 4, 4]
-    _, _, velscale = ppxf.ppxf_util.log_rebin(wave[[0, -1]], wave, flux=True)
+    _, _, velscale = ppxf.ppxf_util.log_rebin(wave[[0, -1]], wave)
     velscale = np.round(velscale, decimals=7)
     galaxy_spec, log_wave, _ = ppxf.ppxf_util.log_rebin(
         wave[[0, -1]], spec, velscale=velscale)
@@ -89,7 +91,7 @@ def main():
         galaxy_spec, log_wave, _ = ppxf.ppxf_util.log_rebin(
             wave[[0, -1]], spec, velscale=velscale)
 
-    FWHM_gal = 2.51 * 1.05 # This is the MILES resolution, we used MILES for our "galaxy".
+    FWHM_gal = 2.51 * 1.01 # This is the MILES resolution, we used MILES for our "galaxy".
     templ = ppxf.miles_util.miles(
         os.path.join(miles_path, 'miles_models/*Z*T*fits'), velscale, FWHM_gal)
     templates = templ.templates
@@ -97,13 +99,18 @@ def main():
     c = 299792.458   # km/s
     dv = c*(templ.ln_lam_temp[0]-log_wave[0])
     noise = galaxy_spec / 50.
-    galaxy_spec = np.random.normal(galaxy_spec, noise)
+    #galaxy_spec = np.random.normal(galaxy_spec, noise)
     pp = ppxf.ppxf.ppxf(
-        templates, galaxy_spec, noise, velscale, [0, 200], moments=4,
+        templates, galaxy_spec, noise*0+1, velscale, [0, 200], moments=4,
         lam=np.exp(log_wave), vsyst=dv)
     pp.plot()
     pp.wave = wave
     pp.spec = spec
+
+    warnings.warn(
+        'Note: h3/h4 different from input. This goes away if we avoid rebinning to linear scale (e.g. change cube_cont to write log-binned spectrum, then replace galaxy_spec with spec in ppxf.\n'
+        'The order of down-sampling and linear binning does not change the results',
+        UserWarning)
 
     return pp
 
