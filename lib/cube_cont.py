@@ -38,10 +38,6 @@ class CubeCont(Cube):
         n_comp = 1 # Number of distinct kinematic components. Not relevant here.
         vsyst = 0 # TODO Change according to redshift
 
-        # Obtain velscale if not specified.
-        _, _, velscale = ppxf.ppxf_util.log_rebin(
-            input_wave[[0, -1]], input_spectrum, velscale=velscale)
-
         # Obtain log-binned spectrum.
         log_input_spectrum, log_wave, velscale = ppxf.ppxf_util.log_rebin(
             input_wave[[0, -1]], input_spectrum, velscale=velscale)
@@ -97,7 +93,7 @@ class CubeCont(Cube):
 
             # Nested loop over all spaxels; heavy lifting here.
             for j in tqdm.tqdm(range(len(light_map))):
-                for k in tqdm.tqdm(range(len(light_map[j]))):
+                for k in tqdm.tqdm(range(len(light_map[j])), leave=False):
                     losvd_rfft = ppxf.ppxf.losvd_rfft(
                         losvd_parameters[:, j, k], n_spec, n_moments,
                         len(spectrum_rfft), n_comp, vsyst, resample_factor,
