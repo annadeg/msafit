@@ -20,7 +20,7 @@ class CubeCont(Cube):
 
     def computeSpectrum(
         self, modelLight2D, modelVel2D, parameters_dict, input_wave, input_spectrum,
-        redshift, h3=0, h4=0, velscale=None, resample_factor=10):
+        redshift, h3=0, h4=0, velscale=None, resample_factor=10, use_log_binning=False):
 
         assert parameters_dict.get('total_flux', 1.)==1., f'`total_flux` must be 1 in `parameters_dict`'
         cube_out = np.zeros(self._dim)
@@ -121,9 +121,11 @@ class CubeCont(Cube):
                 # Remove 0 padding.
                 spec_out = spec_out[:len(input_wave)*resample_factor]
 
-                # Rebin to linear, then downsample to original grid.
-                spec_out = np.interp(
-                    wave_hires, np.exp(log_wave_hires), spec_out)
+                # Rebin to linear (default)...
+                if not use_log_binning:
+                    spec_out = np.interp(
+                        wave_hires, np.exp(log_wave_hires), spec_out)
+                # ...then downsample to original grid.
                 spec_out = ppxf.ppxf.rebin(
                     spec_out, resample_factor)
                 """
