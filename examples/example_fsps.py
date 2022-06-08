@@ -2,8 +2,13 @@
 import glob
 import numpy as np
 
+import scipy.interpolate
 import astropy.constants, astropy.units, astropy.wcs
 from  astropy.io import fits
+
+import ppxf
+import ppxf.ppxf_util
+import ppxf.miles_util
 
 import sedpy
 
@@ -23,10 +28,6 @@ def main():
     xs = np.linspace(size_x/-2.0, size_x/2.0, int(size_x/sampling))
     ys = np.linspace(size_y/-2.0, size_y/2.0, int(size_y/sampling))
     xs,ys = np.meshgrid(xs, ys)
-    wave = np.arange(2.6, 2.65, 0.0001)
-    spec0 = 1/np.sqrt(2*np.pi)/0.0005*np.exp(-0.5*((wave-2.63)/0.0005)**2)
-    spec1 = 0.5/np.sqrt(2*np.pi)/0.0005*np.exp(-0.5*((wave-2.605)/0.0005)**2)
-    spec = spec0+spec1
 
     vel2D = velocity_field.VelField2D(
         velocity_field.ArcTan1D, velocity_field.ConstantVdisp)
@@ -42,7 +43,6 @@ def main():
 
     filenames = sorted(glob.glob('fsps_with____nebcont/*fits'))
     ages, mets = [np.zeros(len(filenames)) for _ in 'ab']
-    """
     for i,f in enumerate(filenames):
         # Now this is really clever, and equally bad. `age_metal` should be
         # a `classmethod`, not a bound method. But meh, for the sake of not
@@ -63,10 +63,9 @@ def main():
 
     Cube3D = cube_cont.CubeCont(xs, ys, wave)
     Cube3D.computeSpectrum(
-        [Light2D], [vel2D], [parameters], wave, spec, 0, h3=-.1, h4=-0.1)
+        Light2D, vel2D, parameters, wave, spec, 0, h3=-.1, h4=-0.1)
     Cube3D.writeIPSObject('test_FSPS.fits')
     Cube3D.writeFitsData('test_FSPS.fits')
-    """
 
     # Check output.
     data = fits.open('test_FSPS.fits')
@@ -76,6 +75,33 @@ def main():
     astro_filter = sedpy.observate.load_filters(('sdss_r0',))[0]
 
     assert np.isclose(astro_filter.ab_mag(wave, flux), parameters['tot_AB_mag']), 'Mismatch in magnitude'
+
+    # Check sol.
+    spec = data[0].data[:, 29, 29]
+    _, _, velscale = ppxf.ppxf_util.log_rebin(wave[[0, -1]], wave)
+    velscale = np.round(velscale, decimals=7)
+    galaxy_spec, log_wave, _ = ppxf.ppxf_util.log_rebin(
+        wave[[0, -1]], spec, velscale=velscale)
+    if len(log_wave)<len(wave):
+        velscale -= 1.e-8 # Address rounding error.
+        galaxy_spec, log_wave, _ = ppxf.ppxf_util.log_rebin(
+            wave[[0, -1]], spec, velscale=velscale)
+
+    w,f = np.loadtxt('fsps_with____nebcont/LSF-Config_fsps').T
+    fwhm_interp = scipy.interpolate.interp1d(w, f*1.01, bounds_error=True)
+    templ = fsps_mist_c3k_util.fsps_mist_c3k(
+        'fsps_with____nebcont/*fits', velscale[0],
+        fwhm_interp, 'fsps_with____nebcont/LSF-Config_fsps')
+    templates = templ.templates
+    templates = templates.reshape(len(templates), -1)
+    pp = ppxf.ppxf.ppxf(
+        templates, galaxy_spec, galaxy_spec*0+1, velscale, [0, 200], moments=4,
+        lam=np.exp(log_wave))
+    pp.plot()
+    pp.wave = wave
+    pp.spec = spec
+
+    return pp
 
 
 if __name__=="__main__":

@@ -20,15 +20,12 @@ import ppxf.miles_util
 
 def main():
 
-    size_x, size_y = 3.0, 3.0
+    # size_x, size_y = 3.0, 3.0
+    size_x, size_y = 0.5, 0.5 # Smaller cube for faster computing.
     sampling = 0.05
     xs = np.linspace(size_x/-2.0, size_x/2.0, int(size_x/sampling))
     ys = np.linspace(size_y/-2.0, size_y/2.0, int(size_y/sampling))
     xs,ys = np.meshgrid(xs, ys)
-    wave = np.arange(2.6, 2.65, 0.0001)
-    spec0 = 1/np.sqrt(2*np.pi)/0.0005*np.exp(-0.5*((wave-2.63)/0.0005)**2)
-    spec1 = 0.5/np.sqrt(2*np.pi)/0.0005*np.exp(-0.5*((wave-2.605)/0.0005)**2)
-    spec = spec0+spec1
 
     vel2D = velocity_field.VelField2D(
         velocity_field.ArcTan1D, velocity_field.ConstantVdisp)
@@ -55,15 +52,18 @@ def main():
     with fits.open(filenames[index]) as hdu:
         spec_wcs = astropy.wcs.WCS(hdu[0].header)
         wave = spec_wcs.all_pix2world(np.arange(spec_wcs._naxis[0]), 0)[0]
+        select_range = (wave>=3600.) & (wave<=7500.)
         spec = hdu[0].data * astropy.constants.L_sun / astropy.units.AA
         dist = 10*astropy.units.pc
         spec /= (4.*np.pi*dist**2)
         spec = spec.to('erg/(s AA cm2)')
         spec = spec.value # in erg/(s AA cm2)
+        spec, wave = spec[select_range], wave[select_range]
 
     Cube3D = cube_cont.CubeCont(xs, ys, wave)
     Cube3D.computeSpectrum(
-        [Light2D], [vel2D], [parameters], wave, spec, 0, h3=-.1, h4=-0.1)
+        Light2D, vel2D, parameters, wave, spec, 0, h3=-.1, h4=-0.1,
+        resample_factor=10)
     Cube3D.writeIPSObject('test_MILES.fits')
     Cube3D.writeFitsData('test_MILES.fits')
 
@@ -78,19 +78,34 @@ def main():
 
 
     # Check sol.
-    spec = data[0].data[:, 30, 30]
-    _, _, velscale = ppxf.ppxf_util.log_rebin(wave[[0, -1]], wave)
+    spec = data[0].data[:, 4, 4]
+    _, _, velscale = ppxf.ppxf_util.log_rebin(wave[[0, -1]], wave, flux=True)
+    velscale = np.round(velscale, decimals=7)
     galaxy_spec, log_wave, _ = ppxf.ppxf_util.log_rebin(
         wave[[0, -1]], spec, velscale=velscale)
-    FWHM_gal = 2.51 # This is the MILES resolution, we used MILES for our "galaxy".
+    if len(log_wave)<len(wave):
+        print('Beekj')
+        velscale -= 1.e-8 # Solve rounding error.
+        galaxy_spec, log_wave, _ = ppxf.ppxf_util.log_rebin(
+            wave[[0, -1]], spec, velscale=velscale)
+
+    FWHM_gal = 2.51 * 1.05 # This is the MILES resolution, we used MILES for our "galaxy".
     templ = ppxf.miles_util.miles(
         os.path.join(miles_path, 'miles_models/*Z*T*fits'), velscale, FWHM_gal)
     templates = templ.templates
     templates = templates.reshape(len(templates), -1)
-    galaxy_spec = galaxy_spec[:-1] # Rounding errors may result in longer galaxy_spec than templates.
+    c = 299792.458   # km/s
+    dv = c*(templ.ln_lam_temp[0]-log_wave[0])
+    noise = galaxy_spec / 50.
+    galaxy_spec = np.random.normal(galaxy_spec, noise)
     pp = ppxf.ppxf.ppxf(
-        templates, galaxy_spec, galaxy_spec*0+1, velscale, [0, 200], moments=4)
+        templates, galaxy_spec, noise, velscale, [0, 200], moments=4,
+        lam=np.exp(log_wave), vsyst=dv)
     pp.plot()
+    pp.wave = wave
+    pp.spec = spec
+
+    return pp
 
 
 if __name__=="__main__":

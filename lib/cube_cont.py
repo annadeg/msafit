@@ -22,13 +22,11 @@ class CubeCont(Cube):
         self, modelLight2D, modelVel2D, parameters_dict, input_wave, input_spectrum,
         redshift, h3=0, h4=0, velscale=None, resample_factor=10):
 
-        assert parameters_dict[0].get('total_flux', 1.)==1., f'`total_flux` must be 1 in `parameters_dict`'
+        assert parameters_dict.get('total_flux', 1.)==1., f'`total_flux` must be 1 in `parameters_dict`'
         cube_out = np.zeros(self._dim)
 
-        warnings.warn('Need to get rid of the multiple component concept. Cannot stand its implementation')
-
         astro_filter = sedpy.observate.load_filters(
-            (parameters_dict[0]['tot_AB_filter'],))[0]
+            (parameters_dict['tot_AB_filter'],))[0]
         norm_factor = astro_filter.ab_mag(input_wave, input_spectrum)
         norm_factor = 10**(0.4 * (norm_factor - 1.))
         input_spectrum = input_spectrum * norm_factor
@@ -38,9 +36,18 @@ class CubeCont(Cube):
         n_comp = 1 # Number of distinct kinematic components. Not relevant here.
         vsyst = 0 # TODO Change according to redshift
 
+        # Obtain velscale.
+        _, _, velscale = ppxf.ppxf_util.log_rebin(
+            input_wave[[0, -1]], input_wave*0, velscale=velscale)
+        velscale = np.round(velscale, decimals=10) # To avoid rounding issues.
+
         # Obtain log-binned spectrum.
-        log_input_spectrum, log_wave, velscale = ppxf.ppxf_util.log_rebin(
+        log_input_spectrum, log_wave, _ = ppxf.ppxf_util.log_rebin(
             input_wave[[0, -1]], input_spectrum, velscale=velscale)
+        if len(log_wave)<len(input_wave):
+            velscale -= 1.e-8 # Solve rounding error.
+            log_input_spectrum, log_wave, _ = ppxf.ppxf_util.log_rebin(
+                input_wave[[0, -1]], input_spectrum, velscale=velscale)
 
         # Need high-res spectrum to oversample and ensure accuracy of convolution with LOSVD
         log_input_spectrum_hires = np.copy(log_input_spectrum)
@@ -48,10 +55,9 @@ class CubeCont(Cube):
            log_input_spectrum_hires, resample_factor, order=3)
 
         # Hi-resolution output grid.
-        wave_hires = scipy.ndimage.interpolation.zoom(
-            input_wave, resample_factor, order=3)
         log_wave_hires = scipy.ndimage.interpolation.zoom(
             log_wave, resample_factor, order=3)
+        wave_hires = np.linspace(*np.exp(log_wave_hires[[0, -1]]), num=len(log_wave_hires))
         #wave_hires = np.linspace(
         #    input_wave[0], input_wave[-1], len(input_wave)*resample_factor)
         #_, log_wave_hires, _ = ppxf.ppxf_util.log_rebin(
@@ -61,72 +67,69 @@ class CubeCont(Cube):
         npad = 2**int(np.ceil(np.log2(len(log_input_spectrum_hires))))
         spectrum_rfft = np.fft.rfft(log_input_spectrum_hires, npad)
 
-        # Loop over all model components.
-        for i in range(len(modelLight2D)):
+        light_map = modelLight2D.model(
+            self._x, self._y, parameters_dict,
+            out_surfacebrightness=False)
 
-            light_map = modelLight2D[i].model(
-                self._x, self._y, parameters_dict[i],
-                out_surfacebrightness=False)
+        velocity_map, dispersion_map = modelVel2D.model(
+            self._x, self._y, parameters_dict)
 
-            velocity_map, dispersion_map = modelVel2D[i].model(
-                self._x, self._y, parameters_dict[i])
+        losvd_parameters = np.array([
+            velocity_map, dispersion_map]) / velscale
 
-            losvd_parameters = np.array([
-                velocity_map, dispersion_map]) / velscale
+        if h3!=0:
+            h3_map = np.full_like(velocity_map, h3)
+            losvd_parameters = np.vstack([
+                losvd_parameters, h3_map[None, :, :]])
 
-            if h3!=0:
-                h3_map = np.full_like(velocity_map, h3)
+        if h4!=0:
+            if h3==0: # Always need an h3 map if h4 is used. Use 0 if necessary.
+                h3_map = np.full_like(velocity_map, 0.)
                 losvd_parameters = np.vstack([
                     losvd_parameters, h3_map[None, :, :]])
 
-            if h4!=0:
-                if h3==0: # Always need an h3 map if h4 is used. Use 0 if necessary.
-                    h3_map = np.full_like(velocity_map, 0.)
-                    losvd_parameters = np.vstack([
-                        losvd_parameters, h3_map[None, :, :]])
+            h4_map = np.full_like(velocity_map, h4)
+            losvd_parameters = np.vstack([
+                losvd_parameters, h4_map[None, :, :]])
 
-                h4_map = np.full_like(velocity_map, h4)
-                losvd_parameters = np.vstack([
-                    losvd_parameters, h4_map[None, :, :]])
+        n_moments = (len(losvd_parameters),)
 
-            n_moments = (len(losvd_parameters),)
+        # Nested loop over all spaxels; heavy lifting here.
+        for j in (pbarj:=tqdm.tqdm(range(len(light_map)), colour='blue')):
+            pbarj.set_description('Cube     ')
+            for k in (pbark:=tqdm.tqdm(range(len(light_map[j])), colour='green', leave=False)):
+                pbark.set_description(f'Slice {j: 3d}')
 
-            # Nested loop over all spaxels; heavy lifting here.
-            for j in tqdm.tqdm(range(len(light_map))):
-                for k in tqdm.tqdm(range(len(light_map[j])), leave=False):
-                    losvd_rfft = ppxf.ppxf.losvd_rfft(
-                        losvd_parameters[:, j, k], n_spec, n_moments,
-                        len(spectrum_rfft), n_comp, vsyst, resample_factor,
-                        sigma_diff)
-                    
-                    comp_index, nspec_index = 0, 0
-                    spec_out = np.fft.irfft(
-                        spectrum_rfft * losvd_rfft[:, comp_index, nspec_index],
-                        npad)
+                losvd_rfft = ppxf.ppxf.losvd_rfft(
+                    losvd_parameters[:, j, k], n_spec, n_moments,
+                    len(spectrum_rfft), n_comp, vsyst, resample_factor,
+                    sigma_diff)
+                
+                comp_index, nspec_index = 0, 0
+                spec_out = np.fft.irfft(
+                    spectrum_rfft * losvd_rfft[:, comp_index, nspec_index],
+                    npad)
 
-                    # Remove 0 padding.
-                    spec_out = spec_out[:len(input_wave)*resample_factor]
+                # Remove 0 padding.
+                spec_out = spec_out[:len(input_wave)*resample_factor]
 
-                    # Rebin to linear, then downsample to original grid.
-                    spec_out = np.interp(
-                        wave_hires, np.exp(log_wave_hires), spec_out)
-                    spec_out = ppxf.ppxf.rebin(
-                        spec_out, resample_factor)
-                    """
-                    spec_out = ppxf.ppxf.rebin(
-                        spec_out[:len(log_input_spectrum)*resample_factor],
-                        resample_factor)
-                    # TODO This interpolation step is not desirable!
-                    spec_out = np.interp(
-                        input_wave, np.exp(log_wave), spec_out)
-                    """
-                    
-                    cube_out[:, j, k] = spec_out * light_map[j, k]
+                # Rebin to linear, then downsample to original grid.
+                spec_out = np.interp(
+                    wave_hires, np.exp(log_wave_hires), spec_out)
+                spec_out = ppxf.ppxf.rebin(
+                    spec_out, resample_factor)
+                """
+                # This is a viable alternative to the two-steps process above.
+                spec_out = np.interp(
+                    input_wave, np.exp(log_wave_hires), spec_out)
+                """
+                
+                cube_out[:, j, k] = spec_out * light_map[j, k]
 
- 
+
         temp_flux    = np.nansum(cube_out, axis=(1, 2))
         temp_mag     = astro_filter.ab_mag(input_wave, temp_flux)
-        rescale_flux = 10**(0.4*(temp_mag - parameters_dict[0]['tot_AB_mag']))
+        rescale_flux = 10**(0.4*(temp_mag - parameters_dict['tot_AB_mag']))
                   
         self.data = cube_out * rescale_flux # cgs
 
