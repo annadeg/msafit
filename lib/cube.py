@@ -78,7 +78,8 @@ class Cube(object):
         hdus = fits.HDUList([hdu,tab])
         hdus.writeto(fileout,overwrite=True)
         
-if __name__ == "__main__":
+
+def main():
     parameters = {'r_eff_light':0.2, 'n_index':1.0, 'cent_x_light':0.0, 'cent_y_light':0.0, 'axisratio_light':np.cos(50.0/180.0*np.pi), 'PA_light':20.0, 'total_flux':10.0, "v_asympt":200, "r_turnover":0.2, "PA": 20.0, "inclination": 50.0, 'cent_x_vel':0.0, 'cent_y_vel':0.0,'sigma_0':50.}
     
     size_x = 3.0
@@ -97,3 +98,5 @@ if __name__ == "__main__":
     Cube3D.writeIPSObject("test_cube.fits")
     
     
+if __name__ == "__main__":
+    main()
