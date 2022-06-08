@@ -27,7 +27,7 @@ def Sersic2D(x, y, parameter_dict):
     return light_distribution2D
         
         
-if __name__ == "__main__":
+def main():
     parameter_dict = {'r_eff_light':0.2, 'n_index':1.0, 'cent_x_light':0.0, 'cent_y_light':0.0, 'axisratio_light':np.cos(80.0/180.0*np.pi), 'PA_light':20.0, 'total_flux':10.0}
     
     size_x = 3.0
@@ -45,7 +45,5 @@ if __name__ == "__main__":
 
 
 
-
-
-
-        
+if __name__ == "__main__":
+    main()

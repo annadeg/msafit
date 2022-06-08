@@ -70,7 +70,7 @@ def ConstantVdisp(r,parameters_dict):
 
 
 
-if __name__ == "__main__":
+def main():
     parameters = {"v_asympt":200, "r_turnover":0.2, "PA": 20.0, "inclination": 20.0, 'cent_x_vel':0.0, 'cent_y_vel':0.0,'sigma_0':50.}
 
     vel_2D = VelField2D(ArcTan1D,ConstantVdisp)
@@ -93,3 +93,7 @@ if __name__ == "__main__":
     hdu.writeto('test_vel.fits',overwrite=True)
     hdu = fits.PrimaryHDU(disp_field)
     hdu.writeto('test_disp.fits',overwrite=True)
+
+
+if __name__ == "__main__":
+    main()
